@@ -2,7 +2,8 @@ import path from 'path';
 import { app, ipcMain } from 'electron';
 import serve from 'electron-serve';
 import { createWindow } from './helpers';
-import Database from 'better-sqlite3';
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -12,26 +13,66 @@ if (isProd) {
   app.setPath('userData', `${app.getPath('userData')} (development)`);
 }
 
-// --- DATABASE & IPC SETUP ---
-const db = new Database('database.db');
-db.exec('CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)');
+const firebaseConfig = {
+  apiKey: "AIzaSyDZyh8IxfACBxQ7BxYGM2eIJq_UpH_gly4",
+  authDomain: "simpleapp-7383.firebaseapp.com",
+  projectId: "simpleapp-7383",
+  storageBucket: "simpleapp-7383.firebasestorage.app",
+  messagingSenderId: "28875272707",
+  appId: "1:28875272707:web:1196660870139a098d1436",
+  measurementId: "G-FKTZ1MC5YH"
+};
 
-ipcMain.handle('get-items', () => {
-  return db.prepare('SELECT * FROM items').all();
+// Initialize Firebase with a unique name to avoid conflict with Electron's 'app'
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+
+// --- FIREBASE IPC HANDLERS ---
+
+// This fixes the 'get-items' error by providing a handler for the frontend
+ipcMain.handle('get-items', async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, "items"));
+    return querySnapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data() 
+    }));
+  } catch (error) {
+    console.error("Firebase Fetch Error:", error);
+    return [];
+  }
 });
 
-ipcMain.handle('add-item', (event, name) => {
-  const stmt = db.prepare('INSERT INTO items (name) VALUES (?)');
-  stmt.run(name);
-  return { success: true };
+ipcMain.handle('add-item', async (event, name) => {
+  try {
+    await addDoc(collection(db, "items"), { name });
+    return { success: true };
+  } catch (error) {
+    console.error("Firebase Add Error:", error);
+    return { success: false, error: error.message };
+  }
 });
 
-ipcMain.handle('delete-item', (event, id) => {
-  const stmt = db.prepare('DELETE FROM items WHERE id = ?');
-  stmt.run(id);
-  return { success: true };
+ipcMain.handle('delete-item', async (event, id) => {
+  try {
+    const itemRef = doc(db, "items", id);
+    await deleteDoc(itemRef);
+    return { success: true };
+  } catch (error) {
+    console.error("Firebase Delete Error:", error);
+    return { success: false, error: error.message };
+  }
 });
-// ----------------------------
+
+// Extra sync handler if you are using it specifically in your UI
+ipcMain.handle('sync-to-firebase', async (event, item) => {
+  try {
+    const docRef = await addDoc(collection(db, "items"), item);
+    return { success: true, id: docRef.id };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
 
 // --- WINDOW CREATION SETUP ---
 (async () => {
@@ -50,7 +91,6 @@ ipcMain.handle('delete-item', (event, id) => {
   } else {
     const port = process.argv[2];
     await mainWindow.loadURL(`http://localhost:${port}/home`);
-    // Opens the developer console so you can see errors if they happen!
     mainWindow.webContents.openDevTools(); 
   }
 })();

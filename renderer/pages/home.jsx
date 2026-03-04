@@ -78,9 +78,9 @@ export default function Home() {
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'sans-serif', display: 'flex' }}>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, paddingRight: '2rem' }}>
         <h1>My Pure JS Desktop App</h1>
-        <div style={{ marginBottom: '1rem' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
           <input 
             type="text" 
             placeholder="Type a new item..." 
@@ -91,14 +91,46 @@ export default function Home() {
           <button onClick={handleAddItem} style={{ padding: '0.5rem 1rem' }}>Add Item</button>
         </div>
 
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {items.map((item) => (
-            <li key={item.id} style={{ marginBottom: '0.5rem' }}>
-              {item.name} 
-              <button onClick={() => handleDeleteItem(item.id)} style={{ marginLeft: '1rem', color: 'red' }}>Delete</button>
-            </li>
-          ))}
-        </ul>
+        {/* --- REPLACED LIST WITH TABLE HERE --- */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #ccc', backgroundColor: '#f9f9f9' }}>
+              <th style={{ padding: '0.75rem' }}>Item Name</th>
+              <th style={{ padding: '0.75rem', width: '100px' }}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
+                <td style={{ padding: '0.75rem' }}>{item.name}</td>
+                <td style={{ padding: '0.75rem' }}>
+                  <button 
+                    onClick={() => handleDeleteItem(item.id)} 
+                    style={{ 
+                      color: 'white', 
+                      backgroundColor: '#dc3545', 
+                      border: 'none', 
+                      padding: '0.4rem 0.8rem', 
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && (
+              <tr>
+                <td colSpan="2" style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
+                  No items found. Add an item above!
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        {/* ----------------------------------- */}
+
       </div>
 
       <div style={{ flex: 1, maxWidth: '400px', textAlign: 'center' }}>
